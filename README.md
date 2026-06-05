@@ -39,30 +39,38 @@ Le téléphone et le PC doivent être **sur le même réseau Wi-Fi**.
 
 ## 🚀 Installation
 
+### Méthode rapide (recommandée)
+
 ```bash
-# 1. Cloner le dépôt
+git clone https://github.com/dexteee-r/remote-mouse.git
+cd remote-mouse
+```
+
+Puis **double-cliquez sur `install.bat`**. Le script :
+- vérifie que Python et Node.js sont présents,
+- installe les dépendances Python et compile l'interface web,
+- vous demande un mot de passe d'accès et crée `server\.env`.
+
+### Méthode manuelle
+
+```bash
 git clone https://github.com/dexteee-r/remote-mouse.git
 cd remote-mouse
 
-# 2. Installer les dépendances Python
+# Dépendances Python
 pip install -r requirements.txt
 
-# 3. Installer + compiler le client web
+# Client web (installation + compilation)
 cd client
 npm install
 npm run build
 cd ..
-```
 
-### Configurer le mot de passe
-
-Copiez le fichier d'exemple et définissez votre mot de passe :
-
-```bash
+# Mot de passe d'accès
 copy server\.env.example server\.env
 ```
 
-Ouvrez `server\.env` et remplacez la valeur :
+Ouvrez ensuite `server\.env` et remplacez la valeur :
 
 ```
 APP_PASSWORD=votre_mot_de_passe_ici
@@ -104,6 +112,7 @@ APP_PASSWORD=votre_mot_de_passe_ici
 
 ```
 remote-mouse/            ← racine du depot
+├── install.bat         ← installation un-clic
 ├── start.vbs            ← point d'entree (double-clic)
 ├── launcher.pyw         ← orchestre serveurs + icone tray
 ├── requirements.txt     ← dependances Python
