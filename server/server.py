@@ -1,19 +1,28 @@
 import asyncio
 import math
 import os
+import sys
 import websockets
 import json
 import pyautogui
 from dotenv import load_dotenv
 
-load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+
+# ── Resolution du .env (compatible mode gele PyInstaller) ───────────────────
+# - En .exe gele : .env est lu A COTE de l'executable.
+# - En dev       : .env est lu a cote de server.py (dossier server/).
+
+def _runtime_dir() -> str:
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+ENV_PATH = os.path.join(_runtime_dir(), ".env")
 
 # Disable PyAutoGUI fail-safe (useful for remote control)
 pyautogui.FAILSAFE = False
 pyautogui.PAUSE = 0
-
-PORT     = int(os.getenv("WS_PORT", 8765))
-PASSWORD = os.getenv("APP_PASSWORD", "")
 
 VALID_BUTTONS = {"left", "right"}
 MAX_DELTA     = 2000
@@ -22,7 +31,26 @@ MAX_KEY_LEN   = 40
 MAX_HOTKEYS   = 6
 
 
-# ── Validation helpers ─────────────────────────────────────────────────────
+# ── Configuration lue paresseusement (rechargee a chaque appel) ─────────────
+# Permet de prendre en compte un .env cree/modifie APRES le demarrage.
+
+def get_port() -> int:
+    load_dotenv(ENV_PATH, override=True)
+    try:
+        return int(os.getenv("WS_PORT", "8765"))
+    except (TypeError, ValueError):
+        return 8765
+
+
+def get_password() -> str:
+    load_dotenv(ENV_PATH, override=True)
+    return os.getenv("APP_PASSWORD", "")
+
+
+PORT = get_port()
+
+
+# ── Validation helpers ──────────────────────────────────────────────────────
 
 def valid_delta(value, default=0) -> float:
     try:
@@ -38,20 +66,20 @@ def valid_button(value) -> str:
     return value if value in VALID_BUTTONS else "left"
 
 
-def valid_key(value) -> str | None:
+def valid_key(value):
     if not isinstance(value, str):
         return None
     cleaned = value.strip()[:MAX_KEY_LEN]
     return cleaned if cleaned else None
 
 
-def valid_keys(value) -> list[str]:
+def valid_keys(value):
     if not isinstance(value, list):
         return []
     return [k for k in (valid_key(k) for k in value[:MAX_HOTKEYS]) if k]
 
 
-# ── Client handler ─────────────────────────────────────────────────────────
+# ── Client handler ──────────────────────────────────────────────────────────
 
 async def handle_client(websocket):
     print(f"[SERVER] Client connected from {websocket.remote_address}")
@@ -68,7 +96,8 @@ async def handle_client(websocket):
                 # ── Auth ──────────────────────────────────────────────────
                 if msg_type == "auth":
                     received = data.get("password", "")
-                    if PASSWORD and received == PASSWORD:
+                    password = get_password()
+                    if password and received == password:
                         authenticated = True
                         await websocket.send(json.dumps({"type": "auth_ok"}))
                         print(f"[SERVER] Auth OK from {websocket.remote_address}")
@@ -77,7 +106,7 @@ async def handle_client(websocket):
                         print(f"[SERVER] Auth FAIL from {websocket.remote_address}")
                     continue
 
-                # ── Guard : toutes les commandes nécessitent l'auth ───────
+                # ── Guard : toutes les commandes necessitent l'auth ───────
                 if not authenticated:
                     await websocket.send(json.dumps({"type": "auth_required"}))
                     continue
@@ -129,9 +158,12 @@ async def handle_client(websocket):
         print("[SERVER] Client disconnected")
 
 
+# ── Execution autonome (mode dev : python server.py) ────────────────────────
+
 async def main():
-    print(f"[SERVER] Python WebSocket server listening on ws://0.0.0.0:{PORT}")
-    async with websockets.serve(handle_client, "0.0.0.0", PORT):
+    port = get_port()
+    print(f"[SERVER] Python WebSocket server listening on ws://0.0.0.0:{port}")
+    async with websockets.serve(handle_client, "0.0.0.0", port):
         await asyncio.Future()
 
 

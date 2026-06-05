@@ -70,10 +70,61 @@ echo Configuration existante detectee ^(server\.env^) - conservee.
 
 :done
 echo.
+echo --------------------------------------------------
+echo    Application autonome (.exe)
+echo --------------------------------------------------
+echo Genere un RemoteMouse.exe autonome (sans Python requis)
+echo dans le dossier parent. Build d'environ 1 a 2 minutes.
+echo.
+set "BUILDEXE="
+set /p "BUILDEXE=Generer l'application autonome ? (O/N) : "
+if /i "!BUILDEXE!"=="O" goto :build_exe
+if /i "!BUILDEXE!"=="Y" goto :build_exe
+goto :final
+
+:build_exe
+echo.
+echo Installation de PyInstaller...
+%PYCMD% -m pip install pyinstaller
+if %errorlevel% neq 0 goto :pyinstaller_fail
+echo.
+echo Compilation de l'executable (patientez)...
+%PYCMD% -m PyInstaller RemoteMouse.spec --noconfirm
+if %errorlevel% neq 0 goto :exe_fail
+echo.
+move /Y "dist\RemoteMouse.exe" "..\RemoteMouse.exe" >nul
+if exist "server\.env" copy /Y "server\.env" "..\.env" >nul
+echo Application creee : "%~dp0..\RemoteMouse.exe"
+echo (Le fichier .env contenant le mot de passe est place a cote.)
+echo.
+
+set "MKLINK="
+set /p "MKLINK=Creer un raccourci sur le bureau ? (O/N) : "
+if /i "!MKLINK!"=="O" goto :make_shortcut
+if /i "!MKLINK!"=="Y" goto :make_shortcut
+goto :final
+
+:make_shortcut
+powershell -NoProfile -Command "$d=[Environment]::GetFolderPath('Desktop'); $w=New-Object -ComObject WScript.Shell; $s=$w.CreateShortcut((Join-Path $d 'Remote Mouse.lnk')); $s.TargetPath='%~dp0..\RemoteMouse.exe'; $s.WorkingDirectory='%~dp0..'; $s.IconLocation='%~dp0..\RemoteMouse.exe,0'; $s.Description='Remote Mouse Controller'; $s.Save()"
+if %errorlevel% neq 0 (
+    echo [ATTENTION] Le raccourci n'a pas pu etre cree automatiquement.
+) else (
+    echo Raccourci "Remote Mouse" cree sur le bureau.
+)
+goto :final
+
+:final
+echo.
 echo ==================================================
 echo    Installation terminee.
 echo.
-echo    Double-cliquez sur start.vbs pour lancer.
+if exist "..\RemoteMouse.exe" (
+    echo    Lancez l'application autonome :
+    echo      - via le raccourci du bureau, ou
+    echo      - en double-cliquant "%~dp0..\RemoteMouse.exe"
+) else (
+    echo    Double-cliquez sur start.vbs pour lancer.
+)
 echo ==================================================
 echo.
 pause
@@ -112,6 +163,22 @@ exit /b 1
 echo.
 echo [ERREUR] Echec de l'installation ou de la compilation du client web.
 echo Verifiez que Node.js est correctement installe et reessayez.
+echo.
+pause
+exit /b 1
+
+:pyinstaller_fail
+echo.
+echo [ERREUR] Echec de l'installation de PyInstaller.
+echo Verifiez votre connexion internet et reessayez.
+echo.
+pause
+exit /b 1
+
+:exe_fail
+echo.
+echo [ERREUR] Echec de la compilation de l'executable.
+echo Consultez les messages ci-dessus pour le detail.
 echo.
 pause
 exit /b 1

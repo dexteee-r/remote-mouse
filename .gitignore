@@ -1,8 +1,12 @@
 # Dependencies
 node_modules/
 
-# Build output
+# Build output (client web)
 client/dist/
+
+# Build output (PyInstaller — exe autonome)
+/build/
+/dist/
 
 # Environment — ne jamais committer le vrai .env
 server/.env

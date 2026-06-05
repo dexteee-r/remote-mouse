@@ -49,7 +49,19 @@ cd remote-mouse
 Puis **double-cliquez sur `install.bat`**. Le script :
 - vérifie que Python et Node.js sont présents,
 - installe les dépendances Python et compile l'interface web,
-- vous demande un mot de passe d'accès et crée `server\.env`.
+- vous demande un mot de passe d'accès et crée `server\.env`,
+- propose de générer une **application autonome** et un **raccourci bureau**.
+
+### Application autonome (.exe) — optionnel
+
+À la fin de `install.bat`, vous pouvez générer un **`RemoteMouse.exe` autonome**
+(placé dans le dossier parent) via PyInstaller. Cet exécutable :
+- embarque tout (serveur, interface, dépendances),
+- **ne nécessite ni Python ni Node** sur le PC où il s'exécute,
+- lit son mot de passe dans un fichier `.env` placé **à côté de lui**.
+
+> 📦 **Déploiement sur un autre PC** : copiez simplement `RemoteMouse.exe`
+> et son `.env` dans le même dossier, puis double-cliquez. Rien d'autre à installer.
 
 ### Méthode manuelle
 
