@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Build output
+client/dist/
+
+# Environment — ne jamais committer le vrai .env
+server/.env
+
+# Logs
+*.log
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
