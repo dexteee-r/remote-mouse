@@ -22,12 +22,28 @@ const Trackpad: React.FC<TrackpadProps> = ({
   const lastLeftTap    = useRef(0);
   const dragTimer      = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDragging     = useRef(false);
+  const scrollPending  = useRef(0);                       // delta de scroll accumule
+  const scrollRaf      = useRef<number | null>(null);     // frame d'envoi en attente
 
   const [isActive, setIsActive]   = useState(false);
   const [dragMode, setDragMode]   = useState(false);
   const [ripple, setRipple]       = useState<{ x: number; y: number; id: number } | null>(null);
 
   const vibrate = (ms: number) => window.navigator.vibrate?.(ms);
+
+  // Envoie le scroll accumule (1 message max par frame, ~60/s au lieu de ~120/s)
+  const flushScroll = () => {
+    scrollRaf.current = null;
+    const d = scrollPending.current;
+    scrollPending.current = 0;
+    if (d !== 0) onScroll(d / 5);
+  };
+
+  const scheduleScrollFlush = () => {
+    if (scrollRaf.current === null) {
+      scrollRaf.current = requestAnimationFrame(flushScroll);
+    }
+  };
 
   /* ── Surface handlers ── */
 
@@ -76,7 +92,8 @@ const Trackpad: React.FC<TrackpadProps> = ({
 
     if (e.touches.length === 2) {
       const avgY = (e.touches[0].pageY + e.touches[1].pageY) / 2;
-      onScroll((avgY - initialTouchY.current) / 5);
+      scrollPending.current += avgY - initialTouchY.current;
+      scheduleScrollFlush();
       if (Date.now() - lastScrollTime.current > 100) {
         vibrate(10);
         lastScrollTime.current = Date.now();
@@ -90,6 +107,12 @@ const Trackpad: React.FC<TrackpadProps> = ({
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
+    // Envoie immediatement le reliquat de scroll accumule
+    if (scrollRaf.current !== null) {
+      cancelAnimationFrame(scrollRaf.current);
+      flushScroll();
+    }
+
     // Un doigt reste encore → on est en train de lever le 2e doigt après un scroll
     // Ne pas interpréter ce relâchement comme un tap
     if (e.touches.length > 0) {

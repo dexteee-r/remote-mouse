@@ -29,6 +29,11 @@ MAX_DELTA     = 2000
 MAX_TEXT_LEN  = 500
 MAX_KEY_LEN   = 40
 MAX_HOTKEYS   = 6
+SCROLL_FACTOR = 20
+
+# Accumulateur de scroll : conserve la fraction de cran non envoyee
+# pour que les petits mouvements ne soient jamais perdus par l'arrondi.
+_scroll_acc = 0.0
 
 
 # ── Configuration lue paresseusement (rechargee a chaque appel) ─────────────
@@ -127,8 +132,13 @@ async def handle_client(websocket):
                     pyautogui.doubleClick()
 
                 elif msg_type == "scroll":
+                    global _scroll_acc
                     dy = valid_delta(data.get("dy", 0))
-                    pyautogui.scroll(int(dy * 20))
+                    _scroll_acc += dy * SCROLL_FACTOR
+                    clicks = int(_scroll_acc)      # tronque vers 0
+                    _scroll_acc -= clicks          # garde le reste fractionnaire
+                    if clicks:
+                        pyautogui.scroll(clicks)
 
                 elif msg_type == "type":
                     text = data.get("text", "")
