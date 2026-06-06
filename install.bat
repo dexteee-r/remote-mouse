@@ -77,7 +77,7 @@ echo Genere un RemoteMouse.exe autonome (sans Python requis)
 echo dans le dossier parent. Build d'environ 1 a 2 minutes.
 echo.
 set "BUILDEXE="
-set /p "BUILDEXE=Generer l'application autonome ? (O/N) : "
+set /p "BUILDEXE=Generer l'application autonome (un launcher en .exe) ? (O/N) : "
 if /i "!BUILDEXE!"=="O" goto :build_exe
 if /i "!BUILDEXE!"=="Y" goto :build_exe
 goto :final
