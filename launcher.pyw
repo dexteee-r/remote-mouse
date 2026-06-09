@@ -213,11 +213,20 @@ def main():
             0x40,  # MB_ICONINFORMATION
         )
 
-    def _delayed_open():
-        time.sleep(1.5)
-        webbrowser.open(f"http://{get_local_ip()}:{HTTP_PORT}")
+    # Au lieu d'ouvrir le navigateur, on affiche une simple alerte de confirmation.
+    # (Le navigateur reste ouvrable via le menu de l'icone "Ouvrir dans le navigateur".)
+    def _notify_launched():
+        time.sleep(1.0)  # laisse les serveurs demarrer
+        ctypes.windll.user32.MessageBoxW(
+            0,
+            "Remote Mouse est lance et pret.\n\n"
+            f"Adresse a ouvrir sur le telephone :\n"
+            f"http://{get_local_ip()}:{HTTP_PORT}",
+            "Remote Mouse",
+            0x40,  # MB_ICONINFORMATION
+        )
 
-    threading.Thread(target=_delayed_open, daemon=True).start()
+    threading.Thread(target=_notify_launched, daemon=True).start()
 
     ip = get_local_ip()
     menu = pystray.Menu(
