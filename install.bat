@@ -3,6 +3,16 @@ setlocal enabledelayedexpansion
 title Remote Mouse Controller - Installation
 cd /d "%~dp0"
 
+REM --- Droits administrateur requis pour configurer le pare-feu ---
+net session >nul 2>nul
+if %errorlevel% neq 0 (
+    echo Elevation requise pour configurer le pare-feu.
+    echo Relancement en tant qu'administrateur...
+    timeout /t 2 /nobreak >nul
+    powershell -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList '/c \"%~f0\"' -Verb RunAs"
+    exit /b 0
+)
+
 echo ==================================================
 echo    Remote Mouse Controller - Installation
 echo ==================================================
@@ -114,6 +124,11 @@ if %errorlevel% neq 0 (
 goto :final
 
 :final
+echo.
+echo --- Configuration du pare-feu Windows ---
+netsh advfirewall firewall show rule name="Remote Mouse HTTP" >nul 2>nul || netsh advfirewall firewall add rule name="Remote Mouse HTTP" protocol=TCP dir=in localport=6180 action=allow profile=private >nul 2>nul
+netsh advfirewall firewall show rule name="Remote Mouse WS"   >nul 2>nul || netsh advfirewall firewall add rule name="Remote Mouse WS"   protocol=TCP dir=in localport=8765 action=allow profile=private >nul 2>nul
+echo Ports 6180 (web) et 8765 (WebSocket) ouverts sur le reseau prive.
 echo.
 echo ==================================================
 echo    Installation terminee.

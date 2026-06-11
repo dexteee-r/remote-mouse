@@ -33,6 +33,7 @@ except Exception:
     pass
 
 import asyncio
+import subprocess
 import threading
 import webbrowser
 import socket
@@ -92,13 +93,59 @@ def ensure_env() -> bool:
     return False
 
 
+def _is_admin() -> bool:
+    try:
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return False
+
+
+def _firewall_rule_exists(name: str) -> bool:
+    try:
+        r = subprocess.run(
+            ["netsh", "advfirewall", "firewall", "show", "rule", f"name={name}"],
+            capture_output=True,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        return r.returncode == 0
+    except Exception:
+        return True  # en cas d'erreur on suppose OK pour ne pas faux-alarmer
+
+
+def _add_firewall_rule(name: str, port: str):
+    try:
+        subprocess.run(
+            ["netsh", "advfirewall", "firewall", "add", "rule",
+             f"name={name}", "protocol=TCP", "dir=in", f"localport={port}",
+             "action=allow", "profile=private"],
+            capture_output=True,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+    except Exception:
+        pass
+
+
+def ensure_firewall() -> bool:
+    """Verifie et configure les regles pare-feu reseau local.
+    Si admin : ajoute les regles manquantes et retourne True.
+    Sinon     : retourne False si des regles sont absentes."""
+    rules = [("Remote Mouse HTTP", str(HTTP_PORT)), ("Remote Mouse WS", str(WS_PORT))]
+    missing = [r for r in rules if not _firewall_rule_exists(r[0])]
+    if not missing:
+        return True
+    if _is_admin():
+        for name, port in missing:
+            _add_firewall_rule(name, port)
+        return True
+    return False
+
+
 def _ensure_build():
     """Mode dev uniquement : build le client si dist/ est absent."""
     if FROZEN:
         return
     if os.path.isdir(CLIENT_DIST) and os.listdir(CLIENT_DIST):
         return
-    import subprocess
     npm   = "npm.cmd" if sys.platform == "win32" else "npm"
     flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     subprocess.run(
@@ -213,18 +260,24 @@ def main():
             0x40,  # MB_ICONINFORMATION
         )
 
-    # Au lieu d'ouvrir le navigateur, on affiche une simple alerte de confirmation.
-    # (Le navigateur reste ouvrable via le menu de l'icone "Ouvrir dans le navigateur".)
     def _notify_launched():
         time.sleep(1.0)  # laisse les serveurs demarrer
-        ctypes.windll.user32.MessageBoxW(
-            0,
+        fw_ok = ensure_firewall()
+        ip    = get_local_ip()
+        msg   = (
             "Remote Mouse est lance et pret.\n\n"
             f"Adresse a ouvrir sur le telephone :\n"
-            f"http://{get_local_ip()}:{HTTP_PORT}",
-            "Remote Mouse",
-            0x40,  # MB_ICONINFORMATION
+            f"http://{ip}:{HTTP_PORT}"
         )
+        if not fw_ok:
+            msg += (
+                "\n\n"
+                "Attention : aucune regle pare-feu detectee.\n"
+                "Si la page ne charge pas depuis le telephone,\n"
+                "faites clic droit -> Executer en tant qu'administrateur\n"
+                "pour ouvrir les ports automatiquement."
+            )
+        ctypes.windll.user32.MessageBoxW(0, msg, "Remote Mouse", 0x40)
 
     threading.Thread(target=_notify_launched, daemon=True).start()
 
